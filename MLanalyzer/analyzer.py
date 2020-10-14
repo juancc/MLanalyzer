@@ -1,41 +1,31 @@
 """
 MLanalyzer
 Analyze and display information of models predictions of a time based dataset
+Modes:
+    - Predict: predict images and save annotation file
+    - Analyze: read annotation file and make data analisys
 
 JCA
 Vaico
 """
-from os import listdir
-from os import path, environ
-import json
+from MLanalyzer.auxfunc.modes import predict, analize
 
-from tqdm import tqdm
-import cv2 as cv
+def analyzer(filepath, model=None, date_splitter=None, mode=None, predictions_config=None, saving_condition=None):
+    print(f'Running Analyzer. Mode: {mode if mode else "Complete"}')
+    if mode == 'predict' or not mode:
+        print(f'Making predictions on {filepath}')
 
-def predict(dataset_path, model, date_splitter):
-    """Make and store predictions using model
-        :param im_path: (str) path to images
-        :param model: (MLinference) prediction model: or a function that have predict()
-        :param date_splitter: (func) Function that returns a dict with {year, month, day, hour, second} 
-            if not present will be taken from year to seconds the available one
-    """
-    todo = tqdm(listdir(dataset_path))
-    ann_path = path.join(dataset_path, 'annotation.json')
-
-    print(' - Predicting images in:{}'.format(dataset_path))
-    print(' - Saving labels in {}'.format(ann_path))
-    with open(ann_path, "w") as handler:
-        i=0
-        for f in todo:
-            full_path = path.join(dataset_path, f)
-            try:
-                im = cv.imread(full_path)
-                objs = model.predict(im, model)
-                
-                date = f.split()
-
-                res = {
-                    'objects': objs,
-                    'frame_id': full_path,
-                    'date': None
-                }
+        args = [filepath, model]
+        kwargs={} 
+        if date_splitter: kwargs['date_splitter'] = date_splitter
+        if saving_condition: kwargs['saving_condition'] = saving_condition
+        
+        ann_path = predict(*args, **kwargs)
+        if not mode:
+            mode = 'analyze'
+            filepath = ann_path
+    
+    if mode == 'analyze':
+        print(f'Making analysis on {ann_path}')
+        analize(filepath, predictions_config)
+    print('Done')
