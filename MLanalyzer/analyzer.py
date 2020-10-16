@@ -10,8 +10,9 @@ Vaico
 """
 from MLanalyzer.auxfunc.modes import predict, analize
 
-def analyzer(filepath, model=None, date_splitter=None, mode=None, predictions_config=None, saving_condition=None):
+def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=None, saving_condition=None):
     print(f'Running Analyzer. Mode: {mode if mode else "Complete"}')
+    res = None
     if mode == 'predict' or not mode:
         print(f'Making predictions on {filepath}')
 
@@ -24,8 +25,11 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, predictions_co
         if not mode:
             mode = 'analyze'
             filepath = ann_path
+        else:
+            res = 'ok'
     
     if mode == 'analyze':
         print(f'Making analysis on {filepath}')
-        analize(filepath, predictions_config)
-    print('Done')
+        res = analize(filepath, eval_function)
+    if res:
+        print('Done')
