@@ -48,6 +48,6 @@ def analize(annotation_path, predictions_config):
         :param annotation_path: (str) filepath to json-lines file with predictions
         :param predictions_config: (dict) {'label': weight} for the predictions
     """
-    pass
+    print(annotation_path)
 
 

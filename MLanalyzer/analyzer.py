@@ -26,6 +26,6 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, predictions_co
             filepath = ann_path
     
     if mode == 'analyze':
-        print(f'Making analysis on {ann_path}')
+        print(f'Making analysis on {filepath}')
         analize(filepath, predictions_config)
     print('Done')
