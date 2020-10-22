@@ -4,7 +4,7 @@ predictions_filepath = '/misdoc/datasets/baluarte/analysis-test/predictions'
 
 
 def eval_function(frame_prediction):
-    person = 1
+    person = 0.5
     no_helmet = 3
     person_edge = 2
     no_helmet_edge = 6
@@ -15,7 +15,8 @@ def eval_function(frame_prediction):
         'total':0,
         'sin casco':0,
         'cerca de borde': 0,
-        'sin arnés': 0
+        'sin arnés': 0,
+        "personas": 0
     
     }
 
@@ -29,6 +30,7 @@ def eval_function(frame_prediction):
         for obj in frame_prediction['objects']:
             if obj['label'] == 'persona':
                 feval['total'] += person
+                feval['personas'] += person
                 subobjs = obj['subobject']
                 
                 on_edge = label_exists('cerca', subobjs)

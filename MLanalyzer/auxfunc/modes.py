@@ -89,10 +89,14 @@ def analize(annotation_path, eval_function):
             return None
 
     # Analysis metrics
+    total_sum = sum(reval['total'])
     # Time behaviour plot 
     fig = plt.figure()
     axes = fig.add_subplot(111)
-    plt.title('Evaluation on time')
+    plt.title('Contribución en el tiempo')
+    # Polar plots
+    categories_values = [] # porcentual of total
+    categories = [] 
 
     results = 'Results\n'
     for k,v in reval.items():
@@ -104,9 +108,14 @@ def analize(annotation_path, eval_function):
         max_date = dates[max_idx]
         results = f'{results}----\n {k}\n - Average {eval_average}\n - STD: {eval_std}\n - Max val: {max_val} in {max_date}'
 
-        # Add plots
-        plt.plot(dates, v, label=k)
+        # Add plots time
+        # plt.bar(dates, v, label=k)
 
+        # Polar plot
+        sum_v = sum(v)
+        if k !='total': 
+            categories.append(k)
+            categories_values.append(10*sum_v/total_sum)
     print(results)
 
     savefile = path.join(savepath, 'analysis_results.txt')
@@ -114,10 +123,37 @@ def analize(annotation_path, eval_function):
     with open(savefile, 'w') as f:
         f.write(results)
 
-    # Display plots
+    # Display and save plots
+    # Time behaviour
+    reval.pop('total')
+    plt.stackplot(dates, reval.values(),
+             labels=reval.keys())
+
     plt.gcf().autofmt_xdate()
     axes.legend()
     fig.savefig(path.join(savepath, 'time-eval.png'))
+
+    # Polar plots
+    categories_values.append(categories_values[0])# complete de circle
+    fig_2 = plt.figure(figsize=(10, 6))
+    plt.subplot(polar=True)
+ 
+    theta = np.linspace(0, 2 * np.pi, len(categories_values))
+
+    # Arrange the grid into equal parts in degrees
+    lines, labels = plt.thetagrids(range(0, 360, int(360/len(categories))), (categories))
+
+    # Plot actual sales graph
+    plt.plot(theta, categories_values, label='Total')
+    plt.fill(theta, categories_values, 'b', alpha=0.1)
+
+    # Add legend and title for the plot
+    plt.legend()
+    plt.title("Evaluación de categorías")
+
+    fig_2.savefig(path.join(savepath, 'categories_eval.png'))
+
+    # Shot plots
     plt.show()
 
     return savepath
