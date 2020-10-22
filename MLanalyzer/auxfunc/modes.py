@@ -46,14 +46,27 @@ def predict(dataset_path, model, date_splitter=nvr_default_1, saving_condition=l
                 print(f'Error: {e} on frame:{full_path}')
     return ann_path
 
+def update_results(feval, hist):
+    """Update evaluation results of analysis funcion when is a dict
+        :param feval: (dict) result of evaluation function
+        :param hist: (dict) Previous results
+    """
+    for k,v in feval.items():
+        if k in hist:
+            hist[k].append(v)
+        else:
+            hist[k] = [v]
+
 def analize(annotation_path, eval_function):
     """Analize predictions from annotation file
         :param annotation_path: (str) filepath to json-lines file with predictions
-        :param eval_function: (func) function that recieve the predictions of a date and return date and evaluation number
+        :param eval_function: (func) function that recieve
+            the predictions of a date and return date and evaluation number 
+            or a dict with the total and other evaluated variables
     """
     # Add a date and the evaluation according to the prediction configurarion
     dates = []
-    reval = []
+    reval = {'total':[]}
     
     savepath, _ = path.split(annotation_path)
 
@@ -66,19 +79,34 @@ def analize(annotation_path, eval_function):
             f_date, f_eval = eval_function(l)
             timedate = datetime.fromtimestamp(f_date)
             dates.append(timedate)
-            reval.append(f_eval)
+
+            if isinstance(f_eval, dict):
+                update_results(f_eval, reval)
+            else:
+                reval['total'].append(f_eval)
         except TypeError as e:
-            print('\n Error: Most provide an evaluation function for analysis\n')
+            print(f'\n Error: {e}. Most provide a valid an evaluation function for analysis\n')
             return None
 
     # Analysis metrics
-    eval_average = np.average(reval)
-    eval_std = np.std(reval)
-    max_val = np.amax(reval)
-    max_idx = np.where(reval == np.amax(reval))[0][0]
-    max_date = dates[max_idx]
+    # Time behaviour plot 
+    fig = plt.figure()
+    axes = fig.add_subplot(111)
+    plt.title('Evaluation on time')
 
-    results = f'Results\n - Average {eval_average}\n - STD: {eval_std}\n - Max val: {max_val} in {max_date}'
+    results = 'Results\n'
+    for k,v in reval.items():
+        # Results
+        eval_average = np.average(v)
+        eval_std = np.std(v)
+        max_val = np.amax(v)
+        max_idx = np.where(v == np.amax(v))[0][0]
+        max_date = dates[max_idx]
+        results = f'{results}----\n {k}\n - Average {eval_average}\n - STD: {eval_std}\n - Max val: {max_val} in {max_date}'
+
+        # Add plots
+        plt.plot(dates, v, label=k)
+
     print(results)
 
     savefile = path.join(savepath, 'analysis_results.txt')
@@ -86,12 +114,9 @@ def analize(annotation_path, eval_function):
     with open(savefile, 'w') as f:
         f.write(results)
 
-    # Time behaviour plot   
-    fig = plt.figure()
-    axes = fig.add_subplot(111)
-    plt.title('Evaluation on time')
-    plt.plot(dates, reval)
+    # Display plots
     plt.gcf().autofmt_xdate()
+    axes.legend()
     fig.savefig(path.join(savepath, 'time-eval.png'))
     plt.show()
 

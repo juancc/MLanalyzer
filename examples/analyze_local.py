@@ -11,7 +11,13 @@ def eval_function(frame_prediction):
     no_harness_edge = 6
 
     date = frame_prediction['date']
-    feval = 0
+    feval = {
+        'total':0,
+        'sin casco':0,
+        'cerca de borde': 0,
+        'sin arnés': 0
+    
+    }
 
     def label_exists(label, list_objs):
         for l in list_objs:
@@ -22,7 +28,7 @@ def eval_function(frame_prediction):
     if 'objects' in frame_prediction:
         for obj in frame_prediction['objects']:
             if obj['label'] == 'persona':
-                feval += person
+                feval['total'] += person
                 subobjs = obj['subobject']
                 
                 on_edge = label_exists('cerca', subobjs)
@@ -30,12 +36,18 @@ def eval_function(frame_prediction):
                 without_harness = label_exists('sin arnes', subobjs)
 
                 if not on_edge and without_helmet:
-                    feval += no_helmet
+                    feval['total'] += no_helmet
+                    feval['Sin casco'] += no_helmet
                 if on_edge:
+                    feval['total'] += person_edge
+                    feval['cerca de borde'] += person_edge
+
                     if without_helmet:
-                        feval += no_helmet_edge
+                        feval['total'] += no_helmet_edge
+                        feval['Sin casco'] += no_helmet_edge
                     if without_harness:
-                        feval += no_harness_edge
+                        feval['total'] += no_harness_edge
+                        feval['sin arnés'] += no_harness_edge
     return date, feval
 
 analyzer(predictions_filepath, mode='analyze',eval_function=eval_function)
