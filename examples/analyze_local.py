@@ -1,6 +1,6 @@
 from MLanalyzer.analyzer import analyzer
 
-predictions_filepath = '/misdoc/datasets/baluarte/analysis-test/predictions'
+predictions_filepath = '/misdoc/datasets/baluarte/vrap-1/results/predictions'
 
 
 def eval_function(frame_prediction):
@@ -39,14 +39,14 @@ def eval_function(frame_prediction):
 
                 if not on_edge and without_helmet:
                     feval['total'] += no_helmet
-                    feval['Sin casco'] += no_helmet
+                    feval['sin casco'] += no_helmet
                 if on_edge:
                     feval['total'] += person_edge
                     feval['cerca de borde'] += person_edge
 
                     if without_helmet:
                         feval['total'] += no_helmet_edge
-                        feval['Sin casco'] += no_helmet_edge
+                        feval['sin casco'] += no_helmet_edge
                     if without_harness:
                         feval['total'] += no_harness_edge
                         feval['sin arnés'] += no_harness_edge

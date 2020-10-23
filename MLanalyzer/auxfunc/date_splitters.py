@@ -24,7 +24,26 @@ def nvr_default_1(strim, *args, **kwargs):
         print(f'Couldnt extract date: {strim}. Err: {e}')
     return date
 
+def vaico_recorder_1(strim, *args, **kwargs):
+    """String input: 2018-11-07_15_40_34"""
+    date = None
+    try:
+        full_date, hh, mm, ss = strim.split('_')
+        YY,MM,DD = full_date.split('-')
+
+        d = datetime.datetime(int(YY), int(MM), int(DD), int(hh), int(mm), int(ss))
+        date = time.mktime(d.timetuple())
+
+    except Exception as e:
+        print(f'Couldnt extract date: {strim}. Err: {e}')
+    return date
+
+
+
 
 if __name__ == "__main__":
-    d = nvr_default_1('channel4_2020-07-03_14:29:03')
+    # d = nvr_default_1('channel4_2020-07-03_14:29:03')
+    # print(d)
+
+    d = vaico_recorder_1('2018-11-07_15_40_34')
     print(d)

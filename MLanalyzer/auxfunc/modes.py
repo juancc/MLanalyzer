@@ -91,7 +91,7 @@ def analize(annotation_path, eval_function):
     # Analysis metrics
     total_sum = sum(reval['total'])
     # Time behaviour plot 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(18, 6))
     axes = fig.add_subplot(111)
     plt.title('Contribución en el tiempo')
     # Polar plots

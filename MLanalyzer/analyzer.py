@@ -8,6 +8,7 @@ Modes:
 JCA
 Vaico
 """
+from os import path, makedirs
 from MLanalyzer.auxfunc.modes import predict, analize
 
 def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=None, saving_condition=None):
@@ -15,7 +16,8 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=
     res = None
     if mode == 'predict' or not mode:
         print(f'Making predictions on {filepath}')
-
+        print('Creating Results folder...')
+        makedirs(path.join(filepath, 'results'), exist_ok=True)
         args = [filepath, model]
         kwargs={} 
         if date_splitter: kwargs['date_splitter'] = date_splitter
