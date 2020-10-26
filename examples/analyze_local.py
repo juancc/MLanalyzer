@@ -1,6 +1,6 @@
 from MLanalyzer.analyzer import analyzer
 
-predictions_filepath = '/misdoc/datasets/baluarte/vrap-1/results/predictions'
+predictions_filepath = '/misdoc/datasets/baluarte/analysis-test-2/results/predictions'
 
 
 def eval_function(frame_prediction):

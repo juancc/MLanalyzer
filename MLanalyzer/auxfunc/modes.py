@@ -65,8 +65,7 @@ def analize(annotation_path, eval_function):
             or a dict with the total and other evaluated variables
     """
     # Add a date and the evaluation according to the prediction configurarion
-    dates = []
-    reval = {'total':[]}
+    res = {} # for each 'date':{'total': int, 'other_objects_eval': int}
     
     savepath, _ = path.split(annotation_path)
 
@@ -75,19 +74,28 @@ def analize(annotation_path, eval_function):
     
     for l in lines:
         l = json.loads(l)
-        try:
-            f_date, f_eval = eval_function(l)
+        # try:
+        f_date, f_eval = eval_function(l)
+        if f_date:
             timedate = datetime.fromtimestamp(f_date)
-            dates.append(timedate)
-
             if isinstance(f_eval, dict):
-                update_results(f_eval, reval)
+                res[timedate] = f_eval
             else:
-                reval['total'].append(f_eval)
-        except TypeError as e:
-            print(f'\n Error: {e}. Most provide a valid an evaluation function for analysis\n')
-            return None
+                res[timedate] = {'total': f_eval}
 
+        # except TypeError as e:
+        #     print(f'\n Error: {e}. Most provide a valid an evaluation function for analysis\n')
+            # return None
+    # Sort by dates
+    dates = []
+    reval = {'total':[]}
+    sorted_dates = list(res)
+    sorted_dates.sort()
+    for d in sorted_dates:
+        print(d)
+        dates.append(d)
+        update_results(res[d], reval)
+    
     # Analysis metrics
     total_sum = sum(reval['total'])
     # Time behaviour plot 
