@@ -16,7 +16,7 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=
     res = None
     if mode == 'predict' or not mode:
         print(f'Making predictions on {filepath}')
-        print('Creating Results folder...')
+        print(' - Creating Results folder...')
         makedirs(path.join(filepath, 'results'), exist_ok=True)
         args = [filepath, model]
         kwargs={} 

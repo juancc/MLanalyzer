@@ -9,9 +9,12 @@ from datetime import datetime
 
 from tqdm import tqdm
 import cv2 as cv
+import numpy as np
+
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
+plt.style.use('seaborn')
+
 
 from MLanalyzer.auxfunc.date_splitters import nvr_default_1
 
@@ -24,7 +27,7 @@ def predict(dataset_path, model, date_splitter=nvr_default_1, saving_condition=l
         :param saving_condition: (func) Function hat return true if prediction objects sould be saved
     """
     todo = tqdm(listdir(dataset_path))
-    ann_path = path.join(dataset_path, 'predictions.json')
+    ann_path = path.join(dataset_path, 'results' ,'predictions.json')
 
     print(f' - Predicting images from:{dataset_path}')
     print(f' - Saving predictions in in {ann_path}')
@@ -65,10 +68,10 @@ def analize(annotation_path, eval_function):
             or a dict with the total and other evaluated variables
     """
     # Add a date and the evaluation according to the prediction configurarion
-    res = {} # for each 'date':{'total': int, 'other_objects_eval': int}
-    
-    savepath, _ = path.split(annotation_path)
+    res = {} # for each 'date':{'total': int, 'other_objects_eval': int} 
+    date_epoch = [] # date in seg. For linear analysis
 
+    savepath, _ = path.split(annotation_path)
     with open(annotation_path, 'r') as f:
         lines = f.readlines()
     
@@ -77,6 +80,7 @@ def analize(annotation_path, eval_function):
         # try:
         f_date, f_eval = eval_function(l)
         if f_date:
+            date_epoch.append(f_date)
             timedate = datetime.fromtimestamp(f_date)
             if isinstance(f_eval, dict):
                 res[timedate] = f_eval
@@ -91,8 +95,13 @@ def analize(annotation_path, eval_function):
     reval = {'total':[]}
     sorted_dates = list(res)
     sorted_dates.sort()
+
+    # Remove doubles
+    date_epoch = list(set(date_epoch))
+    date_epoch.sort()
+
+
     for d in sorted_dates:
-        print(d)
         dates.append(d)
         update_results(res[d], reval)
     
@@ -116,20 +125,26 @@ def analize(annotation_path, eval_function):
         max_date = dates[max_idx]
         results = f'{results}----\n {k}\n - Average {eval_average}\n - STD: {eval_std}\n - Max val: {max_val} in {max_date}'
 
-        # Add plots time
-        # plt.bar(dates, v, label=k)
-
         # Polar plot
         sum_v = sum(v)
         if k !='total': 
             categories.append(k)
             categories_values.append(10*sum_v/total_sum)
     print(results)
+    
+    # Total Data
+    total = list(reval['total'])
+
+    # Polynomial Fit
+    polynomial_coeff = np.polyfit(date_epoch, total, 1)
+    print(polynomial_coeff)
 
     savefile = path.join(savepath, 'analysis_results.txt')
     print(f'Saving results {savefile}')
     with open(savefile, 'w') as f:
         f.write(results)
+
+    
 
     # Display and save plots
     # Time behaviour
@@ -137,9 +152,17 @@ def analize(annotation_path, eval_function):
     plt.stackplot(dates, reval.values(),
              labels=reval.keys())
 
+    plt.axhline(y=np.average(total), xmin=0, xmax=50, linestyle='--', color=(1,0,0.5), label='Promedio')
     plt.gcf().autofmt_xdate()
+
+
+    # Draw Fit
+    ynew=np.poly1d(polynomial_coeff)
+    plt.plot(dates,ynew(date_epoch), label='Tendencia', color=(0,0,0), )
+
     axes.legend()
     fig.savefig(path.join(savepath, 'time-eval.png'))
+    
 
     # Polar plots
     categories_values.append(categories_values[0])# complete de circle

@@ -1,14 +1,18 @@
 from MLanalyzer.analyzer import analyzer
 
-predictions_filepath = '/misdoc/datasets/baluarte/analysis-test-2/results/predictions'
+# predictions_filepath = '/misdoc/datasets/baluarte/analysis-test-2/results/predictions'
+predictions_filepath = '/misdoc/datasets/EAFIT-analysis-test/results/predictions'
 
 
 def eval_function(frame_prediction):
-    person = 0.5
+    person = 0.2
     no_helmet = 3
     person_edge = 2
     no_helmet_edge = 6
     no_harness_edge = 6
+
+    bucket = 0.1
+    wheelbarrow = 0.1
 
     date = frame_prediction['date']
     feval = {
@@ -16,7 +20,9 @@ def eval_function(frame_prediction):
         'sin casco':0,
         'cerca de borde': 0,
         'sin arnés': 0,
-        "personas": 0
+        'personas': 0,
+        # 'carretilla':0,
+        # 'balde': 0,
     
     }
 
@@ -31,6 +37,14 @@ def eval_function(frame_prediction):
             if obj['label'] == 'persona':
                 feval['total'] += person
                 feval['personas'] += person
+
+                # feval['total'] += wheelbarrow
+                # feval['carretilla'] += wheelbarrow
+
+                # feval['total'] += bucket
+                # feval['balde'] += bucket
+                
+                
                 subobjs = obj['subobject']
                 
                 on_edge = label_exists('cerca', subobjs)
