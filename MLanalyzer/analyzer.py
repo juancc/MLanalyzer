@@ -11,7 +11,8 @@ Vaico
 from os import path, makedirs
 from MLanalyzer.auxfunc.modes import predict, analize
 
-def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=None, saving_condition=None):
+def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=None, 
+    saving_condition=None, splits=20, similarity=0.05):
     print(f'Running Analyzer. Mode: {mode if mode else "Complete"}')
     res = None
     if mode == 'predict' or not mode:
@@ -32,6 +33,6 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=
     
     if mode == 'analyze':
         print(f'Making analysis on {filepath}')
-        res = analize(filepath, eval_function)
+        res = analize(filepath, eval_function, splits=splits, similarity=similarity)
     if res:
         print('Done')
