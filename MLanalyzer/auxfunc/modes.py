@@ -83,20 +83,13 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
     sorted_dates = list(res)
     sorted_dates.sort()
 
-    # Remove doubles
-    date_epoch = list(set(date_epoch))
-    date_epoch.sort()
-
     for d in sorted_dates:
         dates.append(d)
         if d in res: update_results(res[d], reval)
     
     # Analysis metrics
     total_sum = sum(reval['total'])
-    # Time behaviour plot 
-    fig = plt.figure(figsize=(18, 6))
-    axes = fig.add_subplot(111)
-    plt.title(f'Contribución en el tiempo de {name}')
+    
     # Polar plots
     categories_values = [] # porcentual of total
     categories = [] 
@@ -133,8 +126,32 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
         f.write(results)
 
     # Display and save plots
+
+    # Number of observations by day
+    print('Saving observations by date')
+    num_obs_date = {}
+    for d in dates:
+        Y = d.year
+        m = d.month
+        d = d.day
+        key = f'{Y}-{m}'
+        if key in num_obs_date:
+            num_obs_date[key] += 1
+        else:
+            num_obs_date[key] = 1
+
+    fig_obs_count = plt.figure()
+    plt.plot(num_obs_date.keys(), num_obs_date.values())
+    plt.ylabel("Número Observaciones") 
+    plt.title("Observaciones por mes")
+    fig_obs_count.savefig(path.join(savepath, 'observations-by-month.png'))
+
     
     # Time behaviour
+    # Time behaviour plot 
+    fig = plt.figure(figsize=(18, 6))
+    axes = fig.add_subplot(111)
+    plt.title(f'Contribución en el tiempo de {name}')
     # Fix data for time plot
     reval.pop('total')
     # Convert responses that are lists to lens
@@ -162,7 +179,6 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
 
             plt.bar(unique,frequency)
             fig_list.savefig(path.join(savepath,f'id-{metric}'))
-
 
     # Draw Fit
     ynew = np.poly1d(polynomial_coeff)
@@ -193,7 +209,9 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
 
     # Shot plots
     if show: plt.show()
-    return date_epoch, total
+
+    reval['total'] = total
+    return dates, reval
 
 def is_similar(coeff1, coeff2, thresh):
     """ Return if coefficient are similar. If difference is under thresh percentual"""
@@ -210,65 +228,96 @@ def is_similar(coeff1, coeff2, thresh):
 
 
 
-def clustering(res, dates, splits, similarity, name='Total'):
+def clustering(reval, epoch_dates, splits, similarity, savepath, grouping='total'):
     """Perform a clustering analysis based the slope of the splits. Dataset will be splitted in the split number
     A linear approximation will be made on each group. If is under similar thresh and with
     same sign will be considered the same group"""
     print(f'Performing clustering with: {splits} splits and similarity of: {similarity}')
-    n = len(res)//splits
+    print(f' - Grouping by {grouping}')
+    res = reval[grouping]
+    total_data = len(res)
+    n = total_data//splits# number of data by split
+
+    savepath = path.join(savepath, 'clusters')
+    print(f' - Making directory for cluster results at {savepath}')
+    makedirs(savepath, exist_ok=True)
 
     # Draw Total
     fig = plt.figure(figsize=(20, 6))
     axes = fig.add_subplot(111)
-    plt.title(f'Agrupación ({name})')
-    plt.plot(dates, res, label='Total', color=(0.5,0.5,0.5), linestyle='--')
+    plt.title(f'Agrupación ({grouping})')
 
     batch_n = 0
     # Batches that contain current group
-    curr_res = [] 
-    curr_dates = []
-    cluster_res = []
-    cluster_dates = []
-    for _date, _res in zip(batch(dates, n), batch(res, n)):
-        if not curr_res:
-            curr_res.extend(_res)
-            curr_dates.extend(_date)
-            continue
-        # Perform linear fit of current batch [m,b]
-        curr_coeff = np.polyfit(curr_dates, curr_res, 1)
+    # curr_res = [] 
+    # curr_dates = []
+    # cluster_res = []
+    # cluster_dates = []
+
+    clusters = [] #(init,end)
+    cluster_init = 0
+    cluster_end = min(total_data, n)
+
+    for s in range(splits-1):
+        init = n*(s+1)
+        end = min(total_data, init+n)
+
+        curr_coeff = np.polyfit(epoch_dates[cluster_init:cluster_end], res[cluster_init:cluster_end], 1)
         
         # Perform linear fit of new batch
-        new_coeff = np.polyfit(_date, _res, 1)
+        new_coeff = np.polyfit(epoch_dates[init:end], res[init:end], 1)
         
         if is_similar(curr_coeff, new_coeff, similarity):
-            curr_res.extend(_res)
-            curr_dates.extend(_date)
+            cluster_end = end
             continue
         
         # Not similar
-        cluster_res.append(curr_res)
-        cluster_dates.append(curr_dates)
-
         # Draw cluster
         ynew = np.poly1d(curr_coeff)
-        plt.fill_between(curr_dates, ynew(curr_dates), label=batch_n, color=(random(),random(),random()), )
+        dates = [datetime.fromtimestamp(stamp) for stamp in epoch_dates[cluster_init:cluster_end]]
+        plt.plot(dates, ynew(epoch_dates[cluster_init:cluster_end]), color=(0,0,0),  linestyle='--')
+        plt.fill_between(dates, res[cluster_init:cluster_end],  color=(random(),random(),random()), label=batch_n)
 
-        # Update current
-        curr_res = _res
-        curr_dates = _date
+        # Update cluster
+        clusters.append((cluster_init,cluster_end))
+        cluster_init = init
+        cluster_end = end
         batch_n += 1
-    print(f' - Total of clusters: {len(cluster_res)}')
+    print(f' - Total of clusters: {len(clusters)}')
+    axes.legend()
+    fig.savefig(path.join(savepath, f'clustering-{grouping}.png'))
 
+    results = f'Results\n  Number of clusters: {len(clusters)}\n'
 
+    print(' - Plotting cluster metrics composition')
+    # Plot data of other metrics
+    cluster_name = 0
+    for i,e in clusters:
+        metric_sum = []
+        metric_labels = []
+        results = results + f'--- Cluster {cluster_name} --- \n'
+        total = 0
+        for k,v in reval.items():
+            tot_metric = sum(v[i:e])
+            if tot_metric and k != 'total':
+                total += tot_metric
+                metric_labels.append(k)
+                metric_sum.append(tot_metric)
+                results = results + f' - {k}: {tot_metric}\n'
 
+        results = results + f' * Total: {total}\n'
 
-    # axes.legend()
-    plt.show()
-    
-    
-    
-    
-    exit()
+        fig_metrics = plt.figure()
+        plt.title(f'Composición de cluster {cluster_name}')
+
+        plt.pie(metric_sum, labels=metric_labels,)
+        fig_metrics.savefig(path.join(savepath, f'composition-{cluster_name}.png'))
+        cluster_name += 1
+
+    print(' - Saving results')
+    with open(path.join(savepath,'results.txt'), 'w') as f:
+        f.write(results)
+
 
 def analize(annotation_path, eval_function, splits=20, similarity=0.05):
     """Analize predictions from annotation file
@@ -316,14 +365,18 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05):
                     else:
                         id_date_epoch[_id] = [f_date]
     
+    # Remove doubles
+    date_epoch = list(set(date_epoch))
+    date_epoch.sort()
+
     # Perform general resuls  
-    dates, total = do_analysis(res, date_epoch, savepath, show=False)
+    dates, reval = do_analysis(res, date_epoch, savepath, show=False)
 
     # Perform clustering on general
-    clustering(total, dates, splits, similarity)
-
+    clustering(reval, date_epoch, splits, similarity, savepath)
 
     # Perform IDs results
+    if id_res: print('Doing analysis by IDS')
     for _id, _res in id_res.items():
         do_analysis(_res, id_date_epoch[_id], savepath,name=_id, show=False)   
 
