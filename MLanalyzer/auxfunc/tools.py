@@ -9,7 +9,7 @@ plt.style.use('seaborn')
 
 from MLanalyzer.auxfunc.date_splitters import nvr_default_1
 
-def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day', save=False):
+def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day', save=False, savepath=None, show=True):
     """Plot the distribution of the images dates"""
     print(f'Analyzing dates on: {dataset_path}')
     images = listdir(dataset_path)
@@ -29,24 +29,49 @@ def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day
     date_epoch.sort()
     dates = [datetime.fromtimestamp(stamp) for stamp in date_epoch]
 
-    print('Saving observations by date')
-    num_obs_date = {}
+    print('Grouping observations by date')
+    num_obs_date = {} # date: count
+    # Hours of observations
+    dates_hours = []
+    hours = []
     for d in dates:
         Y = d.year
         m = d.month
-        d = d.day
+        dd = d.day
+        h = d.hour
+  
         key = f'{Y}-{m}'
         if by == 'day':
-            key = f'{m}-{d}'
+            key = f'{m}-{dd}'
         if key in num_obs_date:
             num_obs_date[key] += 1
         else:
             num_obs_date[key] = 1
+        
+        # For hour distribution on dates
+        dates_hours.append(key)
+        hours.append(h)
     
     fig = plt.figure(figsize=(20, 6))
-    plt.plot(num_obs_date.keys(), num_obs_date.values())
+
+    # Count
+    plt.plot(num_obs_date.keys(), num_obs_date.values(), color=(0,0,0), label='Suma')
+    # Hours scatter
+    plt.scatter(dates_hours, hours, marker='.', label='Hora de observación',  color=(1,0,0))
+
+    # Time lines
+    plt.axhline(y=12, xmin=dates_hours[0], xmax=dates_hours[-1], linestyle='--', color=(1,0,0.5), label='Medio día')
+    plt.axhline(y=min(hours), xmin=dates_hours[0], xmax=dates_hours[-1], linestyle='--', color=(0.5,0,1), label='Hora min')
+    plt.axhline(y=max(hours), xmin=dates_hours[0], xmax=dates_hours[-1], linestyle='--', color=(0,1,0.5), label='Hora max')
+
     plt.ylabel("Número Observaciones") 
     plt.title("Observaciones por fecha")
+
+    leg = plt.legend(loc=2)
     if save:
-        fig.savefig(path.join(dataset_path, 'observations-by-date.png'))
-    plt.show()
+        savepath = savepath if savepath else dataset_path
+        savefile = path.join(savepath, 'observations-by-date.png')
+        print(f'Saving observations at: {savefile}')
+        fig.savefig(savefile)
+    
+    if show: plt.show()
