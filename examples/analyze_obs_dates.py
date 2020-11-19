@@ -4,7 +4,7 @@ import logging
 from MLanalyzer.auxfunc.tools import analyze_observation_dates
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 images_path = '/misdoc/datasets/baluarte/from-vrap1'
 savepath = '/home/juanc/'

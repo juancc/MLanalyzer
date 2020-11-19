@@ -11,18 +11,7 @@ from MLanalyzer.auxfunc.date_splitters import nvr_default_1
 
 # Days of the month
 days = [31,28,31,30,31,30,31,31,30,31,30,31]
-months_names = ['Enero',
-'Febrero',
-'Marzo',
-'Abril',
-'Mayo',
-'Junio',
-'Julio',
-'Agosto',
-'Septiembre',
-'Octubre',
-'Noviembre',
-'Diciembre']
+months_names = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
 plt.style.use('seaborn')
 logger = logging.getLogger(__name__)

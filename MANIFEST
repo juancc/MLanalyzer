@@ -2,4 +2,6 @@
 setup.py
 MLanalyzer/analyzer.py
 MLanalyzer/auxfunc/date_splitters.py
+MLanalyzer/auxfunc/general.py
 MLanalyzer/auxfunc/modes.py
+MLanalyzer/auxfunc/tools.py

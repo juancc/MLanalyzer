@@ -8,18 +8,21 @@ import json
 from datetime import datetime
 import itertools
 from random import random
+import logging
 
 from tqdm import tqdm
 import cv2 as cv
 import numpy as np
-
 import matplotlib
 import matplotlib.pyplot as plt
-plt.style.use('seaborn')
-
 
 from MLanalyzer.auxfunc.date_splitters import nvr_default_1
 from MLanalyzer.auxfunc.general import batch
+
+plt.style.use('seaborn')
+logger = logging.getLogger(__name__)
+
+DAYS = [31,28,31,30,31,30,31,31,30,31,30,31]
 
 
 def predict(dataset_path, model, date_splitter=nvr_default_1, saving_condition=lambda obj: True):
@@ -32,8 +35,8 @@ def predict(dataset_path, model, date_splitter=nvr_default_1, saving_condition=l
     todo = tqdm(listdir(dataset_path))
     ann_path = path.join(dataset_path, 'results' ,'predictions.json')
 
-    print(f' - Predicting images from:{dataset_path}')
-    print(f' - Saving predictions in in {ann_path}')
+    logger.info(f' - Predicting images from:{dataset_path}')
+    logger.info(f' - Saving predictions in in {ann_path}')
     with open(ann_path, "w") as handler:
         for filename in todo:
             full_path = path.join(dataset_path, filename)
@@ -49,7 +52,7 @@ def predict(dataset_path, model, date_splitter=nvr_default_1, saving_condition=l
                 }
                 handler.write(json.dumps(line) + '\n')
             except Exception as e:
-                print(f'Error: {e} on frame:{full_path}')
+                logger.error(f'Error: {e} on frame:{full_path}')
     return ann_path
 
 def update_results(feval, hist):
@@ -65,7 +68,7 @@ def update_results(feval, hist):
 
 
 
-def do_analysis(res, date_epoch, savepath, name=None, show=False):
+def do_analysis(res, date_epoch, savepath, name=None, show=False, outlier_sigma=2):
     """Perform the data analysis and plotting based the responses and dates. 
     :param name: (str) for save results in a specific folder
     :param show: (bool) display plots
@@ -89,7 +92,14 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
     
     # Analysis metrics
     total_sum = sum(reval['total'])
-    
+
+    # Outliers: data greater than sigma
+    outlier_ref = np.mean(reval['total']) + outlier_sigma*np.std(reval['total'])
+    total_arr = np.array(reval['total'])
+    outliers_idx = np.argwhere(total_arr>outlier_ref)
+    outliers_date = [dates[i[0]] for i in outliers_idx]
+    outliers_vals = [reval['total'][i[0]] for i in outliers_idx]
+
     # Polar plots
     categories_values = [] # porcentual of total
     categories = [] 
@@ -110,7 +120,7 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
         if k !='total': 
             categories.append(k)
             categories_values.append(10*sum_v/total_sum)
-
+    
     # Total Data
     total = list(reval['total'])
 
@@ -118,40 +128,46 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
     polynomial_coeff = np.polyfit(date_epoch, total, 1)
     fit_result = f'Total Curve Fit \n - Polynomial Coefficients: {polynomial_coeff}'
     results = f'{results}\n{fit_result}'
-    print(fit_result)
+    logger.info(fit_result)
 
     savefile = path.join(savepath, 'analysis_results.txt')
-    print(f'Saving results {savefile}')
+    logger.info(f'Saving results {savefile}')
     with open(savefile, 'w') as f:
         f.write(results)
 
     # Display and save plots
+    
+    # Time behaviour
+    fig = plt.figure(figsize=(20, 8))
+    axes = fig.add_subplot(111)
+    plt.title(f'Contribución en el tiempo de {name}')
+
+    # Plot outliers
+    plt.scatter(outliers_date, outliers_vals, label='Outliers', marker='.', color=(1,0,0))
+    plt.axhline(y=outlier_ref, xmin=0, xmax=50, linestyle='--', color=(0.5,0.5,0.5), label=f'Sigma {outlier_sigma}')
+
 
     # Number of observations by day
-    print('Saving observations by date')
+    logger.info('Saving observations by date')
+    # Fill dates with 0
     num_obs_date = {}
+
+    Y = dates[0].year
+    for m in range(dates[0].month, dates[-1].month+1):
+        n_days = DAYS[m-1]
+        for dd in range(n_days):
+            key = datetime(Y, m, dd+1)
+            num_obs_date[key] = 0
+
     for d in dates:
         Y = d.year
         m = d.month
-        d = d.day
-        key = f'{Y}-{m}'
-        if key in num_obs_date:
-            num_obs_date[key] += 1
-        else:
-            num_obs_date[key] = 1
+        dd = d.day
+        key = datetime(Y, m, dd)
+        num_obs_date[key] += 1
 
-    fig_obs_count = plt.figure()
-    plt.plot(num_obs_date.keys(), num_obs_date.values())
-    plt.ylabel("Número Observaciones") 
-    plt.title("Observaciones por mes")
-    fig_obs_count.savefig(path.join(savepath, 'observations-by-month.png'))
+    plt.plot(num_obs_date.keys(), num_obs_date.values(), label='Número de observaciones', color=(1,0,0))
 
-    
-    # Time behaviour
-    # Time behaviour plot 
-    fig = plt.figure(figsize=(18, 6))
-    axes = fig.add_subplot(111)
-    plt.title(f'Contribución en el tiempo de {name}')
     # Fix data for time plot
     reval.pop('total')
     # Convert responses that are lists to lens
@@ -160,9 +176,12 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False):
         if isinstance(v[0], list): # If results are a list
             list_responses[k] = v
             reval[k] = [len(i) for i in v]  
-
+    # Set colors of the elements of the evaluation
+    eval_colors = [(random(),random(),random()) for i in reval ]
     plt.stackplot(dates, reval.values(),
-             labels=reval.keys())
+             labels=reval.keys(), 
+             colors=eval_colors,
+             )
 
     plt.axhline(y=np.average(total), xmin=0, xmax=50, linestyle='--', color=(1,0,0.5), label='Promedio')
     plt.gcf().autofmt_xdate()
@@ -232,14 +251,14 @@ def clustering(reval, epoch_dates, splits, similarity, savepath, grouping='total
     """Perform a clustering analysis based the slope of the splits. Dataset will be splitted in the split number
     A linear approximation will be made on each group. If is under similar thresh and with
     same sign will be considered the same group"""
-    print(f'Performing clustering with: {splits} splits and similarity of: {similarity}')
-    print(f' - Grouping by {grouping}')
+    logger.info(f'Performing clustering with: {splits} splits and similarity of: {similarity}')
+    logger.info(f' - Grouping by {grouping}')
     res = reval[grouping]
     total_data = len(res)
     n = total_data//splits# number of data by split
 
     savepath = path.join(savepath, 'clusters')
-    print(f' - Making directory for cluster results at {savepath}')
+    logger.info(f' - Making directory for cluster results at {savepath}')
     makedirs(savepath, exist_ok=True)
 
     # Draw Total
@@ -283,13 +302,13 @@ def clustering(reval, epoch_dates, splits, similarity, savepath, grouping='total
         cluster_init = init
         cluster_end = end
         batch_n += 1
-    print(f' - Total of clusters: {len(clusters)}')
+    logger.info(f' - Total of clusters: {len(clusters)}')
     axes.legend()
     fig.savefig(path.join(savepath, f'clustering-{grouping}.png'))
 
     results = f'Results\n  Number of clusters: {len(clusters)}\n'
 
-    print(' - Plotting cluster metrics composition')
+    logger.info(' - Plotting cluster metrics composition')
     # Plot data of other metrics
     cluster_name = 0
     for i,e in clusters:
@@ -314,12 +333,12 @@ def clustering(reval, epoch_dates, splits, similarity, savepath, grouping='total
         fig_metrics.savefig(path.join(savepath, f'composition-{cluster_name}.png'))
         cluster_name += 1
 
-    print(' - Saving results')
+    logger.info(' - Saving results')
     with open(path.join(savepath,'results.txt'), 'w') as f:
         f.write(results)
 
 
-def analize(annotation_path, eval_function, splits=20, similarity=0.05):
+def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_range=None):
     """Analize predictions from annotation file
         :param annotation_path: (str) filepath to json-lines file with predictions
         :param eval_function: (func) function that recieve
@@ -328,7 +347,11 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05):
         :param splits: (int) number of batches to split the data to make linear grouping. 
             Total risk will be splitted and join the parts with similar splope
         _param similarity: (float) percentage of difference to be considered same group
+        :param date_range: (tuple) (initial, end) on seconds since epoch
     """
+    if date_range:
+        logger.info(f'Using a range of dates. From {date_range[0]} to {date_range[1]}')
+
     # Add a date and the evaluation according to the prediction configurarion
     res = {} # for each 'date':{'total': int, 'other_objects_eval': int} 
     date_epoch = [] # date in seg. For linear analysis
@@ -345,6 +368,9 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05):
 
         f_date, f_eval, ids = eval_function(l)
         if f_date:
+            if date_range:
+                if not (f_date>float(date_range[0]) and f_date<float(date_range[1])):
+                    continue
             date_epoch.append(f_date)
             timedate = datetime.fromtimestamp(f_date)
             if isinstance(f_eval, dict):
@@ -376,7 +402,7 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05):
     clustering(reval, date_epoch, splits, similarity, savepath)
 
     # Perform IDs results
-    if id_res: print('Doing analysis by IDS')
+    if id_res: logger.info('Doing analysis by IDS')
     for _id, _res in id_res.items():
         do_analysis(_res, id_date_epoch[_id], savepath,name=_id, show=False)   
 

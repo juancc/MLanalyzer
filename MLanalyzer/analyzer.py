@@ -9,15 +9,20 @@ JCA
 Vaico
 """
 from os import path, makedirs
+import logging
+
 from MLanalyzer.auxfunc.modes import predict, analize
 
+logger = logging.getLogger(__name__)
+
+
 def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=None, 
-    saving_condition=None, splits=20, similarity=0.05):
-    print(f'Running Analyzer. Mode: {mode if mode else "Complete"}')
+    saving_condition=None, splits=20, similarity=0.05, date_range=None):
+    logger.info(f'Running Analyzer. Mode: {mode if mode else "Complete"}')
     res = None
     if mode == 'predict' or not mode:
-        print(f'Making predictions on {filepath}')
-        print(' - Creating Results folder...')
+        logger.info(f'Making predictions on {filepath}')
+        logger.info(' - Creating Results folder...')
         makedirs(path.join(filepath, 'results'), exist_ok=True)
         args = [filepath, model]
         kwargs={} 
@@ -32,7 +37,8 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=
             res = 'ok'
     
     if mode == 'analyze':
-        print(f'Making analysis on {filepath}')
-        res = analize(filepath, eval_function, splits=splits, similarity=similarity)
+        logger.info(f'Making analysis on {filepath}')
+        # Analyze responses
+        res = analize(filepath, eval_function, splits=splits, similarity=similarity, date_range=date_range)
     if res:
-        print('Done')
+        logger.info('Done')
