@@ -6,6 +6,7 @@ from random import random
 # import cv2 as cv
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 
 from MLanalyzer.auxfunc.date_splitters import nvr_default_1
 
@@ -34,7 +35,7 @@ def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day
     
     date_epoch = list(set(date_epoch))
     date_epoch.sort()
-    dates = [datetime.fromtimestamp(stamp) for stamp in date_epoch]
+    dates = [datetime.utcfromtimestamp(stamp) for stamp in date_epoch]
 
     logger.info('Grouping observations by date')
     num_obs_date = {} # date: count
@@ -44,6 +45,9 @@ def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day
     # get months where start and end observations
     init = 12
     end = 0
+
+    # Number of observations by months
+    obs_by_month = [0 for i in range(12)]
     for d in dates:
         Y = d.year
         m = d.month
@@ -64,6 +68,9 @@ def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day
         # For hour distribution on dates
         dates_hours.append(key)
         hours.append(h)
+
+        # for month counting
+        obs_by_month[m-1] += 1
 
     # Add days with 0 observations
     logger.info(f'Compliting observed months: {end-init}')
@@ -144,5 +151,15 @@ def analyze_observation_dates(dataset_path, date_splitter=nvr_default_1, by='day
             if v==0:
                 f.write(k+'\n')
 
+    # Saving metadata
+    month_with_obs = [i for i in range(len(obs_by_month)) if obs_by_month[i] != 0]
+    metadata = {
+        'number of observations': sum(obs_count),
+        'months with observations': month_with_obs,
+        'observed months': len(month_with_obs),
+        'month average': np.average([obs_by_month[i] for i in month_with_obs]),
+        'day average': sum(obs_by_month) / sum([days[i-1] for i in month_with_obs ])
+    }
+    print(metadata)
 
     if show: plt.show()

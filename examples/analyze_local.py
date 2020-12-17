@@ -33,8 +33,8 @@ predictions_filepath = '/misdoc/datasets/baluarte/from-vrap1/results/predictions
 # predictions_filepath = '/misdoc/datasets/baluarte/wiw-test/frames-flip/results/predictions'
 
 
-# date_range = (datetime(2020,8,15).strftime('%s'), datetime(2020,9,15).strftime('%s'))
-date_range = None
+date_range = (datetime(2020,11,1).strftime('%s'), datetime(2020,12,1).strftime('%s'))
+# date_range = None
 
 
 def label_exists(label, list_objs, id_identifier='id:'):
@@ -274,14 +274,110 @@ def eval_function_detailed(frame_prediction):
 
 
 
+draw_formats = {
+	"*": {
+		"font": 2,
+		"font_scale": 0.4,
+		"font_color": [0, 0, 0],
+		"font_thickness": 1,
+		"background_color": "random",
+		"border_color": [0, 0, 0],
+		"background_alpha": 0.6,
+		"draw_score": False,
+		"draw_area": False,
+		"draw_label": True,
+		"style": "modern",
+		"center_color": [0, 0, 255],
+        "draw_properties": True,
+	},
+	"persona": {
+
+		"display_name": "Persona",
+		"sub_objects": {
+			"Con casco": {
+				"background_color": [119, 180, 12]
+			},
+			"Sin casco": {
+				"background_color": [0, 0, 255]
+			},
+			"cerca de borde": {
+				"draw_label": False,
+				"background_color": [0, 0, 255],
+                "draw_properties": False,
+			},
+			"lejos de borde": {
+				"draw_label": False,
+				"background_color": [119, 180, 12],
+                "draw_properties": False,
+			},
+			"Con arnes": {
+				"background_color": [119, 180, 12],
+				"display_name": "Con arnes"
+			},
+			"Sin arnes": {
+				"background_color": [0, 0, 255],
+				"display_name": "Sin arnes"
+			}
+		}
+	},
+	"balde": {
+		"sub_objects": {
+			"cerca de borde": {
+				"draw_label": False,
+				"background_color": [0, 0, 255],
+                "draw_properties": False,
+			},
+			"lejos de borde": {
+				"draw_label": False,
+				"background_color": [119, 180, 12],
+                "draw_properties": False,
+			},
+		}
+	},
+	"tabla": {
+		"sub_objects": {
+			"cerca de borde": {
+				"draw_label": False,
+				"background_color": [0, 0, 255],
+                "draw_properties": False,
+			},
+			"lejos de borde": {
+				"draw_label": False,
+				"background_color": [119, 180, 12],
+                "draw_properties": False,
+			},
+		}
+	},
+	"carretilla": {
+		"sub_objects": {
+			"cerca de borde": {
+				"draw_label": False,
+				"background_color": [0, 0, 255],
+                "draw_properties": False,
+			},
+			"lejos de borde": {
+				"draw_label": False,
+				"background_color": [119, 180, 12],
+                "draw_properties": False,
+			},
+		}
+	},
+	"tubo": {
+		"sub_objects": {
+			"cerca de borde": {
+				"draw_label": False,
+				"background_color": [0, 0, 255],
+                "draw_properties": False,
+			},
+			"lejos de borde": {
+				"draw_label": False,
+				"background_color": [119, 180, 12],
+                "draw_properties": False,
+			},
+		}
+	}
+}
 
 
 
-
-
-
-
-
-
-
-analyzer(predictions_filepath, mode='analyze',eval_function=eval_function_detailed,  similarity=0.6, date_range=date_range)
+analyzer(predictions_filepath, mode='analyze',eval_function=eval_function_detailed, similarity=0.6, date_range=date_range, draw_formats=draw_formats)

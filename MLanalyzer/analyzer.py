@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=None, 
-    saving_condition=None, splits=20, similarity=0.05, date_range=None):
+    saving_condition=None, splits=20, similarity=0.05, date_range=None, draw_formats=None):
     logger.info(f'Running Analyzer. Mode: {mode if mode else "Complete"}')
     res = None
     if mode == 'predict' or not mode:
@@ -39,6 +39,6 @@ def analyzer(filepath, model=None, date_splitter=None, mode=None, eval_function=
     if mode == 'analyze':
         logger.info(f'Making analysis on {filepath}')
         # Analyze responses
-        res = analize(filepath, eval_function, splits=splits, similarity=similarity, date_range=date_range)
+        res = analize(filepath, eval_function, splits=splits, similarity=similarity, date_range=date_range, draw_formats=draw_formats)
     if res:
         logger.info('Done')

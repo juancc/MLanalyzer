@@ -18,6 +18,8 @@ import matplotlib.pyplot as plt
 
 from MLanalyzer.auxfunc.date_splitters import nvr_default_1
 from MLanalyzer.auxfunc.general import batch
+from MLgeometry import Object
+from MLdrawer.drawer import draw
 
 plt.style.use('seaborn')
 logger = logging.getLogger(__name__)
@@ -74,6 +76,7 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False, outlier_sigma=
     :param show: (bool) display plots
     :returns: list of total and sorted dates
     """
+    logger.info('Performing analysis of responses')
     if name:
         # Saving results for ids
         savepath = path.join(savepath, name)
@@ -99,6 +102,7 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False, outlier_sigma=
     outliers_idx = np.argwhere(total_arr>outlier_ref)
     outliers_date = [dates[i[0]] for i in outliers_idx]
     outliers_vals = [reval['total'][i[0]] for i in outliers_idx]
+    logger.info(f'Number of outliers (<{outlier_sigma}): {len(outliers_vals)}')
 
     # Polar plots
     categories_values = [] # porcentual of total
@@ -129,6 +133,14 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False, outlier_sigma=
     fit_result = f'Total Curve Fit \n - Polynomial Coefficients: {polynomial_coeff}'
     results = f'{results}\n{fit_result}'
     logger.info(fit_result)
+
+    # Add outliers to results
+    outliers_filepath = path.join(savepath, 'outliers.txt')
+    logger.info('Saving outliers in: {outliers_filepath}')
+    with open(outliers_filepath, 'w') as f:
+        for i in range(len(outliers_date)):
+            line = f'{outliers_date[i].strftime("%Y-%m-%d_%H:%M:%S")}\t{round(outliers_vals[i], 2)}\n'
+            f.write(line)
 
     savefile = path.join(savepath, 'analysis_results.txt')
     logger.info(f'Saving results {savefile}')
@@ -230,7 +242,7 @@ def do_analysis(res, date_epoch, savepath, name=None, show=False, outlier_sigma=
     if show: plt.show()
 
     reval['total'] = total
-    return dates, reval
+    return dates, reval, outliers_date
 
 def is_similar(coeff1, coeff2, thresh):
     """ Return if coefficient are similar. If difference is under thresh percentual"""
@@ -293,7 +305,7 @@ def clustering(reval, epoch_dates, splits, similarity, savepath, grouping='total
         # Not similar
         # Draw cluster
         ynew = np.poly1d(curr_coeff)
-        dates = [datetime.fromtimestamp(stamp) for stamp in epoch_dates[cluster_init:cluster_end]]
+        dates = [datetime.utcfromtimestamp(stamp) for stamp in epoch_dates[cluster_init:cluster_end]]
         plt.plot(dates, ynew(epoch_dates[cluster_init:cluster_end]), color=(0,0,0),  linestyle='--')
         plt.fill_between(dates, res[cluster_init:cluster_end],  color=(random(),random(),random()), label=batch_n)
 
@@ -338,7 +350,26 @@ def clustering(reval, epoch_dates, splits, similarity, savepath, grouping='total
         f.write(results)
 
 
-def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_range=None):
+def draw_outliers(annotation_path, outliers_date, savepath, draw_formats):
+    """Save frame with predictions of ouliers"""
+    with open(annotation_path, 'r') as f:
+        lines = f.readlines()
+    
+    for l in lines:
+        l = json.loads(l)
+        f_date = datetime.utcfromtimestamp(l['date'])
+        if f_date in outliers_date:
+            logger.info(f'Drawing prediction on outlier: {f_date}')
+            im = cv.imread(l['frame_id'])
+
+            objs = Object.from_dict(l['objects'])
+            draw(objs, im, draw_formats)
+            filepath = path.join(savepath, f'{f_date.strftime("%Y-%m-%d_%H:%M:%S")}.jpg')
+            cv.imwrite(filepath, im)
+
+
+
+def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_range=None, draw_formats=None):
     """Analize predictions from annotation file
         :param annotation_path: (str) filepath to json-lines file with predictions
         :param eval_function: (func) function that recieve
@@ -348,6 +379,7 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_ran
             Total risk will be splitted and join the parts with similar splope
         _param similarity: (float) percentage of difference to be considered same group
         :param date_range: (tuple) (initial, end) on seconds since epoch
+        :param draw_formats: (dict) drawing style for outliers
     """
     if date_range:
         logger.info(f'Using a range of dates. From {date_range[0]} to {date_range[1]}')
@@ -372,7 +404,8 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_ran
                 if not (f_date>float(date_range[0]) and f_date<float(date_range[1])):
                     continue
             date_epoch.append(f_date)
-            timedate = datetime.fromtimestamp(f_date)
+            timedate = datetime.utcfromtimestamp(f_date)
+            
             if isinstance(f_eval, dict):
                 res[timedate] = f_eval
             else:
@@ -396,7 +429,12 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_ran
     date_epoch.sort()
 
     # Perform general resuls  
-    dates, reval = do_analysis(res, date_epoch, savepath, show=False)
+    dates, reval, outliers_date = do_analysis(res, date_epoch, savepath, show=False)
+
+    # Draw predictions of ouliers
+    outliers_path = path.join(savepath, 'outliers')
+    makedirs(outliers_path, exist_ok=True)
+    draw_outliers(annotation_path, outliers_date, outliers_path, draw_formats)
 
     # Perform clustering on general
     clustering(reval, date_epoch, splits, similarity, savepath)
@@ -405,6 +443,5 @@ def analize(annotation_path, eval_function, splits=20, similarity=0.05, date_ran
     if id_res: logger.info('Doing analysis by IDS')
     for _id, _res in id_res.items():
         do_analysis(_res, id_date_epoch[_id], savepath,name=_id, show=False)   
-
 
     return savepath
